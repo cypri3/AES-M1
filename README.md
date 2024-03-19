@@ -1,2 +1,4 @@
 # AES-M1
 AES Implementation Project for Cryptography Course
+
+This project entails the comprehensive implementation of the Advanced Encryption Standard (AES) in the C programming language, guided by the course material and standard documentation. Beginning with a thorough understanding of the AES standard (PS-197), I will develop functional encryption and decryption algorithms for single-block processing using 128-bit keys. Subsequent stages involve expanding functionality to support various text and key sizes, along with implementing multiple modes of operation such as ECB, CBC, CFB, OFB, and GCM, adaptable to key sizes of 128, 192, or 256 bits as selected by the user. Emphasis is placed on clear documentation, code readability, and addressing encountered challenges through the accompanying report, which includes user instructions, testing scripts, implementation insights, and solutions to overcome hurdles faced during development.
