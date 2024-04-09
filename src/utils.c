@@ -8,6 +8,9 @@
 #include "utils.h"
 #include <ctype.h> // Bibliothèque de tests pour les clés
 
+// #define BLOCK_SIZE 128
+// #define SUB_BLOCK_TEXT_SIZE 16
+
 /**
  * This function checks if a key matches the flowwoling conditions :
  * - an hexadicimal key
@@ -94,4 +97,250 @@ char *read_file(const char *filename)
     fclose(file);
 
     return file_content;
+}
+
+// Fonction pour créer un nouveau bloc avec un certain nombre de sous-blocs
+Block *create_block(int size, size_t sub_block_size)
+{
+    Block *block = malloc(sizeof(Block));
+    if (block == NULL)
+    {
+        // Gestion de l'erreur d'allocation de mémoire
+        return NULL;
+    }
+
+    block->sub_blocks = malloc(size * sizeof(SubBlock));
+    if (block->sub_blocks == NULL)
+    {
+        // Gestion de l'erreur d'allocation de mémoire
+        free(block); // Libération de la mémoire déjà allouée
+        return NULL;
+    }
+
+    block->size = size;
+    block->sub_block_size = sub_block_size;
+
+    // Allocation de mémoire pour les données de chaque sous-bloc
+    for (int i = 0; i < size; i++)
+    {
+        block->sub_blocks[i].data = malloc(sub_block_size * sizeof(unsigned int));
+        if (block->sub_blocks[i].data == NULL)
+        {
+            // Gestion de l'erreur d'allocation de mémoire
+            // Libération de la mémoire déjà allouée
+            for (int j = 0; j < i; j++)
+            {
+                free(block->sub_blocks[j].data);
+            }
+            free(block->sub_blocks);
+            free(block);
+            return NULL;
+        }
+    }
+
+    return block;
+}
+
+// Fonction pour libérer la mémoire allouée pour un bloc
+void free_block(Block *block)
+{
+    if (block != NULL)
+    {
+        // Libérer la mémoire allouée pour les données de chaque sous-bloc
+        for (int i = 0; i < block->size; i++)
+        {
+            free(block->sub_blocks[i].data);
+        }
+
+        // Libérer la mémoire allouée pour le tableau de sous-blocs
+        free(block->sub_blocks);
+
+        // Libérer la mémoire allouée pour le bloc lui-même
+        free(block);
+    }
+}
+
+Block *text_to_blocks(const char *text, size_t key_size)
+{
+    int text_length = strlen(text);
+    int block_size = key_size / 8;
+    int num_blocks = text_length / block_size;
+    int padding_size = 0;
+
+    if (text_length % block_size != 0)
+    {
+        num_blocks++;
+        padding_size = (num_blocks * block_size) - text_length;
+    }
+
+    Block *blocks = create_block(num_blocks, block_size);
+
+    int current_block = 0;
+    int current_sub_block = 0;
+    for (int i = 0; i < text_length; i++)
+    {
+        blocks->sub_blocks[current_block].data[current_sub_block] = text[i];
+        current_sub_block++;
+
+        if (current_sub_block == block_size)
+        {
+            current_block++;
+            current_sub_block = 0;
+        }
+    }
+
+    for (int i = 0; i < padding_size; i++)
+    {
+        blocks->sub_blocks[current_block].data[current_sub_block] = '\0';
+        current_sub_block++;
+        if (current_sub_block == block_size)
+        {
+            current_block++;
+            current_sub_block = 0;
+        }
+    }
+
+    return blocks;
+}
+
+// Fonction pour afficher le contenu d'un sous-bloc en string
+void print_subblock_string(SubBlock *subblock, int sub_block_size)
+{
+    for (int i = 0; i < sub_block_size; i++)
+    {
+        printf("%c", subblock->data[i]);
+    }
+    printf("\n");
+}
+
+// Fonction pour afficher le contenu d'un bloc en string
+void print_blocks_string(Block *blocks)
+{
+    for (int i = 0; i < blocks->size; i++)
+    {
+        printf("Block %d: ", i);
+        print_subblock_string(&(blocks->sub_blocks[i]), blocks->sub_block_size);
+    }
+}
+
+// Fonction pour afficher le contenu d'un sous-bloc en binaire
+void print_subblock_binary(SubBlock *subblock, int sub_block_size)
+{
+    for (int i = 0; i < sub_block_size; i++)
+    {
+        for (int j = 7; j >= 0; j--)
+        {
+            printf("%d", (subblock->data[i] >> j) & 1);
+        }
+        printf(" "); // Ajouter un espace entre chaque octet
+    }
+}
+
+// Fonction pour afficher le contenu des blocs en binaire
+void print_blocks_binary(Block *blocks)
+{
+    for (int i = 0; i < blocks->size; i++)
+    {
+        printf("Block %d (binary): ", i);
+        print_subblock_binary(&(blocks->sub_blocks[i]), blocks->sub_block_size);
+        printf("\n");
+    }
+}
+
+// Fonction pour afficher le contenu d'un sous-bloc en hexadécimal
+void print_subblock_hex(SubBlock *subblock, int sub_block_size)
+{
+    for (int i = 0; i < sub_block_size; i++)
+    {
+        printf("%02X ", subblock->data[i]);
+    }
+    printf("\n");
+}
+
+// Fonction pour afficher le contenu d'un bloc en hexadécimal
+void print_blocks_hex(Block *blocks)
+{
+    for (int i = 0; i < blocks->size; i++)
+    {
+        printf("Block %d (hexadecimal): ", i);
+        print_subblock_hex(&(blocks->sub_blocks[i]), blocks->sub_block_size);
+    }
+}
+
+// Fonction pour afficher l'expansion d'une clé en hexadécimal
+void print_expanded_key_hex(int expanded_key_size, unsigned char *expanded_key)
+{
+    printf("Expanded key in hexa:\n");
+    for (int i = 0; i < expanded_key_size; ++i)
+    {
+        printf("%02x", expanded_key[i]);
+        if ((i + 1) % 4 == 0)
+        {
+            printf(" ");
+            if ((i + 1) % 16 == 0)
+            {
+                printf("\n");
+            }
+        }
+    }
+}
+
+// Fonction pour effectuer l'opération XOR entre un sous-bloc et une chaîne de caractères binaire
+void xor_subblock(SubBlock *subblock, const char *hex_string, int key_size)
+{
+    int sub_block_size = key_size / 8; // Taille du sous-bloc en nombre d'éléments
+    int hex_length = strlen(hex_string);
+
+    if (hex_length != sub_block_size * 2)
+    {
+        printf("Error: Hexadecimal string size (%d) must be twice the size of the sub-block (%d bytes).\n", hex_length, sub_block_size);
+        return;
+    }
+
+    for (int i = 0; i < sub_block_size; i++)
+    {
+        char byte_string[3];                         // Stocke le byte en format texte (ex: "0A")
+        strncpy(byte_string, &hex_string[i * 2], 2); // Extraire le byte hexadécimal
+        byte_string[2] = '\0';                       // Terminer la chaîne de caractères
+
+        unsigned int byte_value = (unsigned int)strtol(byte_string, NULL, 16); // Convertir le byte hexadécimal en entier
+        subblock->data[i] ^= byte_value;                                       // Effectuer l'opération XOR avec le sous-bloc
+    }
+}
+
+// Fonction pour effectuer le XOR entre la clé et chaque sous-bloc du bloc
+void xor_blocks_with_key(Block *blocks, const char *key, int key_size)
+{
+    for (int i = 0; i < blocks->size; i++)
+    {
+        xor_subblock(&(blocks->sub_blocks[i]), key, key_size);
+    }
+}
+
+// Fonction pour multiplier deux nombres dans le corps de Galois GF(2^8)
+unsigned int multiply(unsigned int a, unsigned int b)
+{
+    unsigned int result = 0;
+    unsigned int carry = 0;
+
+    for (int i = 0; i < 8; i++)
+    {
+        if (b & 1)
+        {
+            result ^= a;
+        }
+
+        carry = a & 0x80; // Vérifier le bit le plus à gauche de a
+
+        a <<= 1; // Décalage de a vers la gauche d'un bit
+
+        if (carry)
+        {
+            a ^= 0x1B; // XOR avec le polynôme réducteur 0x11B (x^8 + x^4 + x^3 + x + 1)
+        }
+
+        b >>= 1; // Décalage de b vers la droite d'un bit
+    }
+
+    return result;
 }
