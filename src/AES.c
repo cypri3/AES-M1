@@ -9,6 +9,7 @@
 
 #define MAX_KEY_SIZE 48 + 1 // Taille maximale en octets (256 bits + les \0 qui doivent être pris en compte pour le C)
 #define BLOCK_SIZE 128
+#define SUB_BLOCK_SIZE 16
 /**
  * Function to print the help when '-h' character is read
  */
@@ -76,7 +77,7 @@ unsigned char SBox[16][16] = {
 /**
  * NR : Nombre de tours pour l'AES-X
  */
-void KeyExpansion(const char *key, const int key_size, unsigned char *expanded_key, int Nr) // TOTO à corriger https://en.wikipedia.org/wiki/AES_key_schedule
+void KeyExpansion(const char *key, const int key_size, unsigned char *expanded_key, int Nr)
 {
     int keySize = key_size / 8; // Variable key_size / 8 ici pour ne pas faire trop de disivion par 8 dans le reste de la fonction
     int i, j, k;
@@ -90,12 +91,12 @@ void KeyExpansion(const char *key, const int key_size, unsigned char *expanded_k
         strncpy(byte_string, &key[i * 2], 2); // Extraire le byte hexadécimal
         byte_string[2] = '\0';                // Terminer la chaîne de caractères
 
-        unsigned int byte_value = (unsigned int)strtol(byte_string, NULL, 16); // Convertir le byte hexadécimal en entier
-        expanded_key[i] = byte_value;                                          // Effectuer l'opération XOR avec le sous-bloc
+        unsigned int byte_value = (unsigned int)strtol(byte_string, NULL, SUB_BLOCK_SIZE); // Convertir le byte hexadécimal en entier
+        expanded_key[i] = byte_value;                                                      // Effectuer l'opération XOR avec le sous-bloc
     }
 
     // Les mots de clé restants de l'expansion de clé
-    for (i = keySize; i < (Nr + 1) * 16; i += 4)
+    for (i = keySize; i < (Nr + 1) * SUB_BLOCK_SIZE; i += 4)
     {
         for (j = 0; j < 4; ++j)
         {
@@ -137,9 +138,9 @@ void KeyExpansion(const char *key, const int key_size, unsigned char *expanded_k
 }
 
 // Fonction pour appliquer la SubBytes
-void SubBytes(SubBlock *subblock, int key_size)
+void SubBytes(SubBlock *subblock)
 {
-    for (int i = 0; i < key_size / 8; i++)
+    for (int i = 0; i < SUB_BLOCK_SIZE; i++)
     {
         int row = (subblock->data[i] >> 4) & 0x0F; // Extraction de la ligne
         int col = subblock->data[i] & 0x0F;        // Extraction de la colonne
@@ -148,16 +149,16 @@ void SubBytes(SubBlock *subblock, int key_size)
 }
 
 // Fonction pour appliquer la SubBytes à tout un bloc
-void SubBytesBlock(Block *block, int key_size)
+void SubBytesBlock(Block *block)
 {
     for (int i = 0; i < block->size; i++)
     {
-        SubBytes(&(block->sub_blocks[i]), key_size);
+        SubBytes(&(block->sub_blocks[i]));
     }
 }
 
 // Fonction pour appliquer l'inverse de SubBytes
-void InvSubBytes(SubBlock *subblock, int key_size)
+void InvSubBytes(SubBlock *subblock)
 {
 
     // Définition de la Rijndael Inverse S-box
@@ -180,7 +181,7 @@ void InvSubBytes(SubBlock *subblock, int key_size)
         {0x17, 0x2b, 0x04, 0x7e, 0xba, 0x77, 0xd6, 0x26, 0xe1, 0x69, 0x14, 0x63, 0x55, 0x21, 0x0c, 0x7d},
     };
 
-    for (int i = 0; i < key_size / 8; i++)
+    for (int i = 0; i < SUB_BLOCK_SIZE; i++)
     {
         int row = (subblock->data[i] >> 4) & 0x0F;   // Extraction de la ligne
         int col = subblock->data[i] & 0x0F;          // Extraction de la colonne
@@ -189,24 +190,17 @@ void InvSubBytes(SubBlock *subblock, int key_size)
 }
 
 // Fonction pour appliquer l'inverse de SubBytes à tout un bloc
-void InvSubBytesBlock(Block *block, int key_size)
+void InvSubBytesBlock(Block *block)
 {
     for (int i = 0; i < block->size; i++)
     {
-        InvSubBytes(&(block->sub_blocks[i]), key_size);
+        InvSubBytes(&(block->sub_blocks[i]));
     }
 }
 
 // Fonction pour effectuer l'opération ShiftRows sur un sous-bloc
-void ShiftRows(SubBlock *subblock, int sub_block_size)
+void ShiftRows(SubBlock *subblock)
 {
-    // Vérification de la taille du sous-bloc
-    if (sub_block_size != 16)
-    {
-        printf("Error: SubBlock size must be 16 for ShiftRows operation.\n");
-        return;
-    }
-
     // Shift des rangées du sous-bloc
     for (int i = 1; i < 4; i++)
     {
@@ -229,30 +223,16 @@ void ShiftRows(SubBlock *subblock, int sub_block_size)
 // Fonction pour appliquer l'opération ShiftRows à tous les sous-blocs d'un bloc
 void ShiftRowsBlock(Block *block)
 {
-    // Vérification de la taille des sous-blocs
-    if (block->sub_block_size != 16)
-    {
-        printf("Error: SubBlock size must be 16 for ShiftRows operation.\n");
-        return;
-    }
-
     // Application de ShiftRows à chaque sous-bloc
     for (int i = 0; i < block->size; i++)
     {
-        ShiftRows(&(block->sub_blocks[i]), block->sub_block_size);
+        ShiftRows(&(block->sub_blocks[i]));
     }
 }
 
 // Fonction pour effectuer l'opération InvShiftRows sur un sous-bloc
-void InvShiftRows(SubBlock *subblock, int sub_block_size)
+void InvShiftRows(SubBlock *subblock)
 {
-    // Vérification de la taille du sous-bloc
-    if (sub_block_size != 16)
-    {
-        printf("Error: SubBlock size must be 16 for InvShiftRows operation.\n");
-        return;
-    }
-
     // Shift inverse des rangées du sous-bloc
     for (int i = 1; i < 4; i++)
     {
@@ -275,30 +255,16 @@ void InvShiftRows(SubBlock *subblock, int sub_block_size)
 // Fonction pour appliquer l'opération InvShiftRows à tous les sous-blocs d'un bloc
 void InvShiftRowsBlock(Block *block)
 {
-    // Vérification de la taille des sous-blocs
-    if (block->sub_block_size != 16)
-    {
-        printf("Error: SubBlock size must be 16 for InvShiftRows operation.\n");
-        return;
-    }
-
     // Application de InvShiftRows à chaque sous-bloc
     for (int i = 0; i < block->size; i++)
     {
-        InvShiftRows(&(block->sub_blocks[i]), block->sub_block_size);
+        InvShiftRows(&(block->sub_blocks[i]));
     }
 }
 
 // Fonction pour appliquer l'opération MixColumns à un sous-bloc
-void MixColumns(SubBlock *subblock, int sub_block_size)
+void MixColumns(SubBlock *subblock)
 {
-    // Vérification de la taille du sous-bloc
-    if (sub_block_size != 16)
-    {
-        printf("Error: SubBlock size must be 16 for MixColumns operation.\n");
-        return;
-    }
-
     unsigned int temp[4];
 
     // Opération MixColumns sur chaque colonne
@@ -321,7 +287,7 @@ void MixColumnsBlock(Block *block)
 {
     for (int i = 0; i < block->size; i++)
     {
-        MixColumns(&(block->sub_blocks[i]), block->sub_block_size);
+        MixColumns(&(block->sub_blocks[i]));
     }
 }
 
@@ -337,10 +303,10 @@ void MixColumnsBlock2(Block *block)
 
     for (int i = 0; i < block->size; i++)
     {
-        for (int j = 0; j < block->sub_block_size; j++)
+        for (int j = 0; j < SUB_BLOCK_SIZE; j++)
         {
             unsigned char result = 0;
-            for (int k = 0; k < block->sub_block_size; k++)
+            for (int k = 0; k < SUB_BLOCK_SIZE; k++)
             {
                 result ^= multiply(mix_columns_matrix[j][k], block->sub_blocks[i].data[k]);
             }
@@ -350,15 +316,8 @@ void MixColumnsBlock2(Block *block)
 }
 
 // Fonction pour appliquer l'opération InvMixColumns à un sous-bloc
-void InvMixColumns(SubBlock *subblock, int sub_block_size)
+void InvMixColumns(SubBlock *subblock)
 {
-    // Vérification de la taille du sous-bloc
-    if (sub_block_size != 16)
-    {
-        printf("Error: SubBlock size must be 16 for InvMixColumns operation.\n");
-        return;
-    }
-
     unsigned int temp[4];
 
     // Opération InvMixColumns sur chaque colonne
@@ -381,7 +340,7 @@ void InvMixColumnsBlock(Block *block)
 {
     for (int i = 0; i < block->size; i++)
     {
-        InvMixColumns(&(block->sub_blocks[i]), block->sub_block_size);
+        InvMixColumns(&(block->sub_blocks[i]));
     }
 }
 
@@ -397,10 +356,10 @@ void InvMixColumnsBlock2(Block *block)
 
     for (int i = 0; i < block->size; i++)
     {
-        for (int j = 0; j < block->sub_block_size; j++)
+        for (int j = 0; j < SUB_BLOCK_SIZE; j++)
         {
             unsigned char result = 0;
-            for (int k = 0; k < block->sub_block_size; k++)
+            for (int k = 0; k < SUB_BLOCK_SIZE; k++)
             {
                 result ^= multiply(inv_mix_columns_matrix[j][k], block->sub_blocks[i].data[k]);
             }
@@ -435,7 +394,7 @@ void AddRoundKeyBlock(Block *block, const char *key, int key_size)
 
     for (int i = 0; i < block->size; i++)
     {
-        for (int j = 0; j < block->sub_block_size; j++)
+        for (int j = 0; j < SUB_BLOCK_SIZE; j++)
         {
             block->sub_blocks[i].data[j] ^= key[j];
         }
@@ -619,110 +578,121 @@ int main(int argc, char *argv[])
         is_solver = true; // Set the solver mode flag
     }
 
-    if (is_solver == 1)
+    // Lire le contenu du fichier spécifié en argument
+    for (int i = optind; i < argc; i++) // TODO faire une erreur si on est dans un mode solver / non Solveur et pas de fichier donné
     {
-        // Lire le contenu du fichier spécifié en argument
-        for (int i = optind; i < argc; i++)
+        printf("Reading file: %s\n", argv[i]);
+        char *file_content = read_file(argv[i]);
+        printf("File content:\n%s\n", file_content);
+
+        // Convertir le texte en blocs
+        Block *blocks = text_to_blocks(file_content);
+
+        if (is_solver == 1)
         {
+            printf("Decryption mode\n");
+
+            int expanded_key_size, Nr;
+            if (key_size == 128)
+            {
+                Nr = 10;
+                expanded_key_size = 176;
+            }
+            else if (key_size == 192)
+            {
+                Nr = 12;
+                expanded_key_size = 208;
+            }
+            else
+            {
+                Nr = 14;
+                expanded_key_size = 240;
+            }
+            unsigned char expanded_key[expanded_key_size];
+
+            printf("key size : %d\n", key_size);
+            KeyExpansion(key, key_size, expanded_key, Nr);
+            // Affichage de la clé d'expansion
+            print_expanded_key_hex(expanded_key_size, expanded_key); // TODO mettre un mode verbose ?
+
             // ---------- Actuelement partie de tests ------------//
 
-            printf("Reading file: %s\n", argv[i]);
-            char *file_content = read_file(argv[i]);
-            printf("File content:\n%s\n", file_content);
+            if (mode_selected == 0)
+            {
+                unsigned char temp_key[SUB_BLOCK_SIZE];
+                for (int round = 0; round < Nr; round++)
+                {
+                    memcpy(temp_key, &(expanded_key[round * SUB_BLOCK_SIZE]), SUB_BLOCK_SIZE);
+                    // Effectuer le XOR entre la clé et les blocs
+                    xor_blocks_with_key(blocks, temp_key);
+                    printf("\n\n\n\n");
+                    for (int i = 0; i < SUB_BLOCK_SIZE; ++i)
+                    {
+                        printf("%02x ", temp_key[i]);
+                    }
+                    printf("\n\n\n\n");
 
-            // Convertir le texte en blocs
-            Block *blocks = text_to_blocks(file_content, key_size);
+                    // Appliquer SubBytes
+                    SubBytesBlock(blocks);
+                }
+                // Affichage des blocs sous forme de texte
+                printf("Text as blocks after SubBytes \n");
+                print_blocks_string(blocks);
 
-            // Effectuer le XOR entre la clé et les blocs
-            xor_blocks_with_key(blocks, key, key_size);
+                // Affichage des blocs sous forme binaire
+                printf("Text as binary blocks after SubBytes \n");
+                print_blocks_binary(blocks);
 
-            SubBytesBlock(blocks, key_size);
-            InvSubBytesBlock(blocks, key_size);
+                // Affichage des blocs sous forme hexadécimale
+                printf("Text as hex blocks after SubBytes \n");
+                print_blocks_hex(blocks);
 
-            // Affichage des blocs sous forme de texte
-            printf("Text as blocks:\n");
-            print_blocks_string(blocks);
+                // Effectuer le XOR entre la clé et les blocs pour revenir à l'état initial
+                // xor_blocks_with_key(blocks, &(expanded_key[round * SUB_BLOCK_SIZE]));
 
-            // Affichage des blocs sous forme binaire
-            printf("Text as binary blocks:\n");
-            print_blocks_binary(blocks);
+                // Affichage des blocs sous forme de texte
+                printf("Text as blocks after XOR \n");
+                print_blocks_string(blocks);
 
-            // Affichage des blocs sous forme hexadécimale
-            printf("Text as hex blocks:\n");
-            print_blocks_hex(blocks);
-
-            // Effectuer le XOR entre la clé et les blocs
-            xor_blocks_with_key(blocks, key, key_size);
-
-            // Affichage des blocs sous forme de texte
-            printf("Text as blocks:\n");
-            print_blocks_string(blocks);
-
-            // Affichage des blocs sous forme binaire
-            printf("Text as binary blocks:\n");
-            print_blocks_binary(blocks);
+                // Affichage des blocs sous forme binaire
+                printf("Text as binary blocks after XOR \n");
+                print_blocks_binary(blocks);
+            }
+            else if (mode_selected == 1)
+            {
+                // CBC
+            }
+            else if (mode_selected == 2)
+            {
+                // CFB
+            }
+            else
+            {
+                // GCM
+            }
 
             free_block(blocks);
             free(file_content); // Libérer la mémoire allouée pour le contenu du fichier
         }
-        printf("Decryption mode\n");
-        int expanded_key_size, Nr;
-        if (key_size == 128)
+        else if (is_solver == 0)
         {
-            Nr = 10;
-            expanded_key_size = 176;
-        }
-        else if (key_size == 192)
-        {
-            Nr = 12;
-            expanded_key_size = 208;
-        }
-        else
-        {
-            Nr = 14;
-            expanded_key_size = 240;
-        }
-        unsigned char expanded_key[expanded_key_size];
-
-        printf("key size : %d\n", key_size);
-        KeyExpansion(key, key_size, expanded_key, Nr);
-        // Affichage de la clé d'expansion
-        // print_expanded_key_hex(expanded_key_size, expanded_key); //TODO mettre un mode verbose ?
-        if (mode_selected == 0)
-        {
-            // ECB
-        }
-        else if (mode_selected == 1)
-        {
-            // CBC
-        }
-        else if (mode_selected == 2)
-        {
-            // CFB
-        }
-        else
-        {
-            // GCM
-        }
-    }
-    else if (is_solver == 0)
-    {
-        printf("Encryption mode\n");
-        if (mode_selected == 0)
-        {
-            // ECB
-        }
-        else if (mode_selected == 1)
-        {
-            // CBC
-        }
-        else if (mode_selected == 2)
-        {
-            // CFB
-        }
-        else
-        {
-            // GCM
+            printf("Encryption mode\n");
+            if (mode_selected == 0)
+            {
+                // ECB
+            }
+            else if (mode_selected == 1)
+            {
+                // CBC
+            }
+            else if (mode_selected == 2)
+            {
+                // CFB
+            }
+            else
+            {
+                // GCM
+            }
         }
     }
 

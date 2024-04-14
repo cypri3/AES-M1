@@ -6,4 +6,4 @@ generate: génération d'une clé OK
 output: /
 Chiffrer / déchiffrer 
 
-Changer la taille des blocks qui est acutellement défini par la taille de la clé 
+On peut vérifier sur le site https://en.wikipedia.org/wiki/AES_key_schedule
