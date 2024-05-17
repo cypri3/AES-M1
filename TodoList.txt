@@ -1,9 +1,0 @@
-Coder les différentes options:
-mode : CBC CFB ECB GCM
-benchmark : /
-help: /
-generate: génération d'une clé OK
-output: /
-Chiffrer / déchiffrer 
-
-On peut vérifier sur le site https://en.wikipedia.org/wiki/AES_key_schedule
