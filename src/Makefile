@@ -7,34 +7,34 @@ LDFLAGS = #-lm bibli math
 all: AES
 
 AES: AES.o utils.o multiplication_table.o AES_fun.o multi_threading.o ECB.o CBC.o CFB.o GCM.o
-	gcc $(CFLAGS) $(CPPFLAGS) $(LDFLAGS) -o ../AES AES.o utils.o multiplication_table.o AES_fun.o multi_threading.o ECB.o CBC.o CFB.o GCM.o
+	gcc -O3 $(CFLAGS) $(CPPFLAGS) $(LDFLAGS) -o ../AES AES.o utils.o multiplication_table.o AES_fun.o multi_threading.o ECB.o CBC.o CFB.o GCM.o
 
 AES.o: AES.c ../include/AES.h ../include/utils.h ../include/multiplication_table.h ../include/AES_fun.h ../include/multi_threading.h ../include/ECB.h ../include/CBC.h ../include/CFB.h ../include/GCM.h 
-	gcc $(CFLAGS) $(CPPFLAGS) $(LDFLAGS) -c AES.c
+	gcc -O3 $(CFLAGS) $(CPPFLAGS) $(LDFLAGS) -c AES.c
 
 utils.o: utils.c ../include/utils.h
-	gcc $(CFLAGS) $(CPPFLAGS) $(LDFLAGS) -c utils.c
+	gcc -O3 $(CFLAGS) $(CPPFLAGS) $(LDFLAGS) -c utils.c
 
 multiplication_table.c: multiplication_table.c ../include/multiplication_table.h
-	gcc $(CFLAGS) $(CPPFLAGS) $(LDFLAGS) -c multiplication_table.c
+	gcc -O3 $(CFLAGS) $(CPPFLAGS) $(LDFLAGS) -c multiplication_table.c
 
 AES_fun.o: AES_fun.c ../include/AES_fun.h
-	gcc $(CFLAGS) $(CPPFLAGS) $(LDFLAGS) -c AES_fun.c
+	gcc -O3 $(CFLAGS) $(CPPFLAGS) $(LDFLAGS) -c AES_fun.c
 
 multi_threading.o: multi_threading.c ../include/multi_threading.h
-	gcc $(CFLAGS) $(CPPFLAGS) $(LDFLAGS) -c multi_threading.c
+	gcc -O3 $(CFLAGS) $(CPPFLAGS) $(LDFLAGS) -c multi_threading.c
 
 ECB.o: ECB.c ../include/ECB.h
-	gcc $(CFLAGS) $(CPPFLAGS) $(LDFLAGS) -c ECB.c
+	gcc -O3 $(CFLAGS) $(CPPFLAGS) $(LDFLAGS) -c ECB.c
 
 CBC.o: CBC.c ../include/CBC.h
-	gcc $(CFLAGS) $(CPPFLAGS) $(LDFLAGS) -c CBC.c
+	gcc -O3 $(CFLAGS) $(CPPFLAGS) $(LDFLAGS) -c CBC.c
 
 CFB.o: CFB.c ../include/CFB.h
-	gcc $(CFLAGS) $(CPPFLAGS) $(LDFLAGS) -c CFB.c
+	gcc -O3 $(CFLAGS) $(CPPFLAGS) $(LDFLAGS) -c CFB.c
 
 GCM.o: GCM.c ../include/GCM.h
-	gcc $(CFLAGS) $(CPPFLAGS) $(LDFLAGS) -c GCM.c
+	gcc -O3 $(CFLAGS) $(CPPFLAGS) $(LDFLAGS) -c GCM.c
 
 
 
